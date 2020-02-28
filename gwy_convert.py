@@ -4,6 +4,7 @@ __author__ = "Vasily A. Lebedev"
 __copyright__ = "Copyright 2019-2020, University of Limerick"
 __license__ = "GPL-v2"
 __email__ = "vasily.lebedev@ul.ie"
+__website__ = "https://github.com/LebedevV/Useful-scripts"
 
 '''
 This python2 script is a wrapper to the pygwy for the batch convert of usual TEM data to png
