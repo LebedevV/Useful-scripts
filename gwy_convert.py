@@ -16,8 +16,8 @@ import os
 import cv2 #for the combine_png function only
 
 #For FFT angular integration
-import numpy as np 
-import matplotlib.pyplot as plt
+import numpy as np
+#import matplotlib.pyplot as plt
 
 '''
 Pygwy have to be compiled and installed in advance
@@ -81,17 +81,39 @@ def proc_img(d,f,p):
 	#open
 	c = gwy.gwy_file_load(d+'/'+f,gwy.RUN_NONINTERACTIVE)
 	gwy.gwy_app_data_browser_add(c)
+	ids = set(gwy.gwy_app_data_browser_get_data_ids(c))
+	print(ids)
 	#select window
 	gwy.gwy_app_data_browser_select_data_field(c, 0)
 
 	#Is it an Image or a Diffraction pattern?
 	#there is no obviuos ways to distinguish TEM and STEM images
 	data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
-	si = data.get_si_unit_xy()
+
+	rotate = False
+	angle = 203.5
+	if rotate:
+		ext = data.new_alike()
+		data2 = data.new_rotated(ext,angle=angle/180.*np.pi,interp=gwy.INTERPOLATION_BSPLINE,resize=gwy.ROTATE_RESIZE_CUT)
+		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
+		j = gwy.gwy_app_data_browser_add_data_field(data2, cc, True)
+		gwy.gwy_app_data_browser_select_data_field(cc, j)
+	else:
+		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
+		data2 = data
+	#gwy.gwy_app_data_browser_select_data_field(c, 2)
+	#data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
+
+
+	si = data2.get_si_unit_xy()
 	txt_si=si.get_string(gwy.SI_UNIT_FORMAT_PLAIN)
 
 	#import of all current saveas-settings
 	settings = gwy.gwy_app_settings_get()
+	#settings['/module/rotate/angle'] = 90
+
+	ids = set(gwy.gwy_app_data_browser_get_data_ids(c))
+	print(ids)
 
 	#override of some saveas-settings
 	settings['/module/pixmap/title_type'] = 0
@@ -115,7 +137,8 @@ def proc_img(d,f,p):
 	# ... (*lots* of possible settings, see ~/.gwyddion/settings)
 
 	#Rescale to 1024px
-	res = data.get_xres()
+	res = data2.get_xres()
+	print(res)
 	settings['/module/pixmap/zoom'] = 1024./res
 
 	if txt_si == 'm':
@@ -123,10 +146,9 @@ def proc_img(d,f,p):
 		#Saving the original image
 		#'''
 		#change palette
-		c['/0/base/palette'] = 'Gray'
+		cc['/0/base/palette'] = 'Gray'
 		#change range of palette to Auto
-		c['/0/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
-
+		cc['/0/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
 		#inset_length "10 nm"
 	
 		#Changing scalebar color to white
@@ -135,7 +157,7 @@ def proc_img(d,f,p):
 		settings['/module/pixmap/inset_color/green'] = 1.
 
 		#Save png
-		gwy.gwy_file_save(c,d+'/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		gwy.gwy_file_save(cc,d+'/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
 
 		#Automated patterns detection by PSDF
@@ -161,6 +183,7 @@ def proc_img(d,f,p):
 		
 		#FFT plot
 		#'''
+		gwy.gwy_app_data_browser_select_data_field(c, 0)
 		dd = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
 		empty = dd.new_alike()
@@ -217,14 +240,15 @@ def proc_img(d,f,p):
 		dd = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
 
+		old_id = set(gwy.gwy_app_data_browser_get_data_ids(cc))
 		gwy.gwy_process_func_run('psdf_logphi',cc, gwy.RUN_IMMEDIATE)
-		set(gwy.gwy_app_data_browser_get_data_ids(cc))
-
+		new_id = set(gwy.gwy_app_data_browser_get_data_ids(cc))
+		i_psdf = list(new_id - old_id)
 	#	i = gwy.gwy_app_data_browser_add_data_field(psdf, cc, True)
 	#	key = gwy.gwy_name_from_key(gwy.gwy_app_get_data_title_key_for_id(i))
 	#	cc[key] = 'PSDF'
 
-		gwy.gwy_app_data_browser_select_data_field(cc, 2)
+		gwy.gwy_app_data_browser_select_data_field(cc, i_psdf[0])
 		cc['/2/base/palette'] = 'DFit'#'Blue-Violet'
 		cc['/2/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
 		gwy.gwy_file_save(cc,d+'/logphi'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
@@ -246,12 +270,13 @@ def proc_img(d,f,p):
 		while i<len(max_fft_y):
 			max_fft_x.append(np.exp(yoff + i*psdf_dy)/10**9)
 			i+=1
-
+		"""
 		plt.plot(max_fft_x,max_fft_y)
 		plt.xlabel('$1/d, nm^{-1}$')
 		plt.ylabel('Max FFT value, rel. u.')
 		plt.savefig(d+'/fft_diff'+p+'/'+f[:-4]+'_FFT.png')
 		plt.close()
+		"""
 
 		fh = open(d+'/fft_diff'+p+'/'+f[:-4]+'_FFT.ed', 'w')
 		fh.write("PSDF\n")             
@@ -322,6 +347,7 @@ def proc_img(d,f,p):
 
 def combine_png(d,png_dir,fft_dir,f):
 	try:
+	#if 1:
 		scale_factor = 4.
 
 		fft_im_path = d+'/'+fft_dir+'/'+f[:-3]+'png'
