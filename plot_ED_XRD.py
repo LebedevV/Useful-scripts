@@ -241,7 +241,7 @@ def plot(diffr, xrd=None, pks=None, sg=False, sgn=5, sgo=3, direct=False, ed=Fal
 	if direct:
 		ax.set_xlim(.5, 6)
 	else:
-		ax.set_xlim(1, 12)
+		ax.set_xlim(2, 12)
 
 	ax.xaxis.label.set_size(20)
 	ax.yaxis.label.set_size(20)

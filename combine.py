@@ -36,9 +36,9 @@ def combine_png(d,png_dir,fft_dir,f):
 	#if 1:
 		scale_factor = 4.
 
-		fft_im_path = d+'/'+fft_dir+'/'+f[:-3]+'png'
-		png_im_path = d+'/'+png_dir+'/'+f[:-3]+'png'
-		fin_im_path = d+'/'+'combined'+'/'+f[:-3]+'png'
+		fft_im_path = d+'/processed_data/'+fft_dir+'/'+f[:-3]+'png'
+		png_im_path = d+'/processed_data/'+png_dir+'/'+f[:-3]+'png'
+		fin_im_path = d+'/processed_data/'+'combined'+'/'+f[:-3]+'png'
 
 		fft = cv2.imread(fft_im_path)
 		png = cv2.imread(png_im_path)

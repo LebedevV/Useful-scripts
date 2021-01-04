@@ -13,7 +13,7 @@ Author is grateful to the Gwyddion developers team, and personally to David Neč
 
 import sys
 import os
-import cv2 #for the combine_png function only
+#import cv2 #for the combine_png function only
 
 #For FFT angular integration
 import numpy as np
@@ -49,12 +49,13 @@ def get_filelist(d):
 
 #Create dirs for results
 def create_dirs(d,ld,overwrite=False):
-	l = ['png','fft','combined','logphi','diff_txt','fft_diff']
+	l = ['png','fft','combined','fft_diff']
 	p = ''
 #######To rewrite
 	try:
+		os.mkdir(d+'/processed_data')
 		for ll in l:
-			os.mkdir(d+'/'+ll)
+			os.mkdir(d+'/processed_data/'+ll)
 	except:
 		print('Dir already exists')
 #######
@@ -82,7 +83,7 @@ def proc_img(d,f,p):
 	c = gwy.gwy_file_load(d+'/'+f,gwy.RUN_NONINTERACTIVE)
 	gwy.gwy_app_data_browser_add(c)
 	ids = set(gwy.gwy_app_data_browser_get_data_ids(c))
-	print(ids)
+	#print(ids)
 	#select window
 	gwy.gwy_app_data_browser_select_data_field(c, 0)
 
@@ -113,7 +114,7 @@ def proc_img(d,f,p):
 	#settings['/module/rotate/angle'] = 90
 
 	ids = set(gwy.gwy_app_data_browser_get_data_ids(c))
-	print(ids)
+	#print(ids)
 
 	#override of some saveas-settings
 	settings['/module/pixmap/title_type'] = 0
@@ -138,7 +139,7 @@ def proc_img(d,f,p):
 
 	#Rescale to 1024px
 	res = data2.get_xres()
-	print(res)
+	#print(res)
 	settings['/module/pixmap/zoom'] = 1024./res
 
 	if txt_si == 'm':
@@ -157,7 +158,7 @@ def proc_img(d,f,p):
 		settings['/module/pixmap/inset_color/green'] = 1.
 
 		#Save png
-		gwy.gwy_file_save(cc,d+'/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		gwy.gwy_file_save(cc,d+'/processed_data/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
 
 		#Automated patterns detection by PSDF
@@ -231,7 +232,7 @@ def proc_img(d,f,p):
 		#Save FFT image with the appropriate palette and inset scalebar color
 		cc['/'+str(i)+'/base/palette'] = 'DFit'#'Blue-Violet'
 		cc['/'+str(i)+'/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
-		gwy.gwy_file_save(cc,d+'/fft'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		gwy.gwy_file_save(cc,d+'/processed_data/fft'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
 
 		#'''
@@ -251,7 +252,7 @@ def proc_img(d,f,p):
 		gwy.gwy_app_data_browser_select_data_field(cc, i_psdf[0])
 		cc['/2/base/palette'] = 'DFit'#'Blue-Violet'
 		cc['/2/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
-		gwy.gwy_file_save(cc,d+'/logphi'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		#gwy.gwy_file_save(cc,d+'/processed_data/logphi'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 
 
 		#Look for a max value for each R
@@ -278,7 +279,7 @@ def proc_img(d,f,p):
 		plt.close()
 		"""
 
-		fh = open(d+'/fft_diff'+p+'/'+f[:-4]+'_FFT.ed', 'w')
+		fh = open(d+'/processed_data/fft_diff'+p+'/'+f[:-4]+'_FFT.ed', 'w')
 		fh.write("PSDF\n")             
 		fh.write('nm-1\tMax FFT\tAvg FFT\n')
 		i = 0
@@ -324,7 +325,7 @@ def proc_img(d,f,p):
 		settings['/module/pixmap/inset_color/green'] = 0.
 
 		#Save png
-		gwy.gwy_file_save(c,d+'/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		gwy.gwy_file_save(c,d+'/processed_data/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
 
 		#Radial integration of diffraction pattern
@@ -345,33 +346,16 @@ def proc_img(d,f,p):
 
 
 
-def combine_png(d,png_dir,fft_dir,f):
-	try:
-	#if 1:
-		scale_factor = 4.
-
-		fft_im_path = d+'/'+fft_dir+'/'+f[:-3]+'png'
-		png_im_path = d+'/'+png_dir+'/'+f[:-3]+'png'
-		fin_im_path = d+'/'+'combined'+'/'+f[:-3]+'png'
-
-		fft = cv2.imread(fft_im_path)
-		png = cv2.imread(png_im_path)
-		fft = cv2.resize(fft, None,fx=1/scale_factor, fy=1/scale_factor, interpolation = cv2.INTER_CUBIC)
-		png[-len(fft):,-len(fft):]=fft
-
-		cv2.imwrite(fin_im_path,png)
-		cv2.destroyAllWindows()
-	except:
-		print("No combined image was created for ",d)
-
-
 d='.' #Work in the current dir
 l,ld = get_filelist(d) #Collect lists of files and dirs there
 lf = filter_ending(l,['dm3','dm4','gwy']) #Select files of specified type
 
 #Processing
 if len(lf)>0:
+	print("Now processing: "+str(lf))
 	p = create_dirs(d,ld)
 	for f in lf:
-		proc_img(d,f,p)
-		combine_png(d,'png','fft',f)
+		try:
+			proc_img(d,f,p)
+		except:
+			print("Error with the image processing, file ",f)
