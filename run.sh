@@ -1,0 +1,10 @@
+python2 ~/git/scripts_open/gwy_convert.py
+cd processed_data
+cd line_int
+python ~/git/scripts_open/plot_lines.py
+cd ..
+cd fft_diff
+python ~/git/scripts_open/plot_ED_XRD.py
+cd ..
+cd ..
+python ~/git/scripts_open/combine.py

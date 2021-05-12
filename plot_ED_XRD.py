@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 __author__ = "Vasily A. Lebedev"
-__copyright__ = "Copyright 2019-2020, University of Limerick"
+__copyright__ = "Copyright 2019-2021, University of Limerick"
 __license__ = "GPL-v2"
 __email__ = "vasily.lebedev@ul.ie"
 __website__ = "https://github.com/LebedevV/Useful-scripts"
@@ -43,6 +43,7 @@ def parse_xrd(name):
 	ph_name = ''
 	while 1:
 		s = k1.readline()
+		print(s)
 		if "Sample" in s:
 			ph_name = s.split('\"')
 			ph_name = ph_name[1]
@@ -68,7 +69,7 @@ def parse_xrd(name):
 		s = s.replace(',', ' ')
 		s = s.replace('\t', ' ')
 		s = s.split(' ')
-
+		#print(s)
 		d1_x.append(float(s[0]))
 		d1_y.append(float(s[1]))
 
@@ -125,13 +126,18 @@ def parse_pks(name):
 		s = s.replace('\t', ' ')
 		s = s.split(' ')
 
+#		d1_x.append(float(s[0]))
+#		d1_y.append(float(s[2]))
+
 #		d1_x.append(float(s[1]))
 #		d1_y.append(float(s[3]))
-		d1_x.append(float(s[-3]))
-		d1_y.append(float(s[-1]))
+		d1_x.append(float(s[4]))
+		d1_y.append(float(s[-4]))
 
 	d1_y = numpy.array(d1_y)
 	d1_x = numpy.array(d1_x)
+	#wavel = 0.154
+	#d1_x = 2*scipy.sin(d1_x*scipy.pi/180./2.)/wavel
 	d1_x = 10./d1_x #From direct Angstroms to reciprocal nm's
 	d1_y = d1_y/max(d1_y) #Renorm to 1
 
@@ -255,7 +261,7 @@ def plot(diffr, xrd=None, pks=None, sg=False, sgn=5, sgo=3, direct=False, ed=Fal
 		ax.plot(fft_x, fft_y, "b", label="FFT max")
 
 	#plot peaks
-	c = ['k','r', 'g', 'c', 'm', 'y'] #Colors order for a limited number of patterns
+	c = ['g', 'm', 'y'] #Colors order for a limited number of patterns
 	if pks:
 		if len(pks_l) <= len(c):
 			i = 0

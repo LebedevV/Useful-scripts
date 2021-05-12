@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 __author__ = "Vasily A. Lebedev"
-__copyright__ = "Copyright 2019-2020, University of Limerick"
+__copyright__ = "Copyright 2019-2021, University of Limerick"
 __license__ = "GPL-v2"
 __email__ = "vasily.lebedev@ul.ie"
 __website__ = "https://github.com/LebedevV/Useful-scripts"
@@ -49,7 +49,7 @@ def get_filelist(d):
 
 #Create dirs for results
 def create_dirs(d,ld,overwrite=False):
-	l = ['png','fft','combined','fft_diff']
+	l = ['png','fft','combined','fft_diff','line_int','combined/fft_i','combined/lin']
 	p = ''
 #######To rewrite
 	try:
@@ -91,8 +91,15 @@ def proc_img(d,f,p):
 	#there is no obviuos ways to distinguish TEM and STEM images
 	data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 
+
+#	crop_fft = True #Not implemented here yet, see combine.py instead
+#	rotate = True
 	rotate = False
-	angle = 203.5
+	angle = 19
+	
+	invert = False
+	line_int = True
+
 	if rotate:
 		ext = data.new_alike()
 		data2 = data.new_rotated(ext,angle=angle/180.*np.pi,interp=gwy.INTERPOLATION_BSPLINE,resize=gwy.ROTATE_RESIZE_CUT)
@@ -102,6 +109,8 @@ def proc_img(d,f,p):
 	else:
 		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
 		data2 = data
+	if invert:
+		data2.invert(1, 0, 0)
 	#gwy.gwy_app_data_browser_select_data_field(c, 2)
 	#data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 
@@ -159,32 +168,34 @@ def proc_img(d,f,p):
 
 		#Save png
 		gwy.gwy_file_save(cc,d+'/processed_data/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
-		#'''
 
-		#Automated patterns detection by PSDF
-		'''
-		line = gwy.DataLine(1, 1, True)
-		dd = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
-		dd.rpsdf(line, gwy.INTERPOLATION_LINEAR, gwy.WINDOWING_HANN, -1)
-	
-		ux = line.get_si_unit_x()
-		uy = line.get_si_unit_y()
-		print ux.get_string(gwy.SI_UNIT_FORMAT_PLAIN)
-		print uy.get_string(gwy.SI_UNIT_FORMAT_PLAIN)
-
-		phys_y = line.get_data()
-		#print([xx for xx in range(0,len())])
-		#print(line.get_dx())
-	 
-		print(line.get_data()[0])
-		print(line.get_data()[1])
-		plt.plot(phys_y)
-		plt.show()	
-		'''
-		
+		if line_int:
+			data2 = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
+			np_data = gwyutils.data_field_data_as_array(data2)
+			yoff = data2.get_yoffset()
+			#print(yoff,"y off")
+			data2_dy = data2.get_dy()
+			#print(psdf_dy,"y dy")
+			max_line_y = [max(i) for i in np_data.T]
+			avg_line_y = [sum(i)/len(i) for i in np_data.T]
+			max_line_x = []
+			i = 0
+			while i<len(max_line_y):
+				max_line_x.append(((len(max_line_y)-i-1)*data2_dy)*10**9)
+				i+=1
+			fh = open(d+'/processed_data/line_int'+p+'/'+f[:-4]+'_lint.txt', 'w')
+			fh.write("Line int\n")             
+			fh.write('nm\tMax Line\tAvg Line\n')
+			i = 0
+			while i<len(max_line_y):
+				fh.write('%g\t%g\t%g\t\n' % (max_line_x[i], max_line_y[i], avg_line_y[i]))
+				i+=1
+			fh.close()
+			
 		#FFT plot
 		#'''
-		gwy.gwy_app_data_browser_select_data_field(c, 0)
+		if not rotate:
+			gwy.gwy_app_data_browser_select_data_field(c, 0)
 		dd = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 		cc = gwy.gwy_app_data_browser_get_current(gwy.APP_CONTAINER)
 		empty = dd.new_alike()
@@ -192,8 +203,8 @@ def proc_img(d,f,p):
 		fftim = dd.new_alike()
 		# see http://gwyddion.net/documentation/head/pygwy/gwy.DataField-class.html#fft2d
 		dd.fft2d(empty, fftre, fftim,
-			gwy.WINDOWING_HANN,
-			#gwy.WINDOWING_NONE,
+			#gwy.WINDOWING_HANN,
+			gwy.WINDOWING_NONE,
 			gwy.TRANSFORM_DIRECTION_FORWARD,
 			gwy.INTERPOLATION_LINEAR, True, 1)
 		fftre.fft_postprocess(True)
@@ -213,6 +224,7 @@ def proc_img(d,f,p):
 		#key = gwy.gwy_name_from_key(gwy.gwy_app_get_data_title_key_for_id(i))
 		#cc[key] = 'FFT Modulus'
 		gwy.gwy_app_data_browser_select_data_field(cc, i)
+
 
 		#Radial integration of the obtained FFT, direct approach
 		#Needs to be fixed
@@ -286,6 +298,7 @@ def proc_img(d,f,p):
 		while i<len(max_fft_y):
 			fh.write('%g\t%g\t%g\t\n' % (max_fft_x[i], max_fft_y[i], avg_fft_y[i]))
 			i+=1
+		fh.close()
 
 		#'''
 
@@ -355,7 +368,7 @@ if len(lf)>0:
 	print("Now processing: "+str(lf))
 	p = create_dirs(d,ld)
 	for f in lf:
-		try:
-			proc_img(d,f,p)
-		except:
-			print("Error with the image processing, file ",f)
+		#try:
+		proc_img(d,f,p)
+		#except:
+		#	print("Error with the image processing, file ",f)
