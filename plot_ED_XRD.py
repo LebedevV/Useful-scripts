@@ -348,7 +348,7 @@ for f in ed_list:
 		#to smooth graphs by savgol, please, add 'sg = True'
 		#for different parameters of savgol one may use sgn parameter () for window and sgo for degree
 		plot(f, pks=pks, xrd=xrd, direct=False, sg=True, ed=True, sgn=11)
-		#plot(f, pks=pks, xrd=xrd, direct=True, sg=True, ed=True)
+		plot(f, pks=pks, xrd=xrd, direct=True, sg=True, ed=True)
 
 		#fft_x, fft_y = parse_ed(f)
 		#ax.plot(fft_x, fft_y+0.05*i, label=f[:-3])

@@ -92,7 +92,8 @@ def proc_img(d,f,p):
 	data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 
 
-#	crop_fft = True #Not implemented here yet, see combine.py instead
+	crop_fft = True 
+#	crop_fft = False 
 #	rotate = True
 	rotate = False
 	angle = 19
@@ -148,7 +149,7 @@ def proc_img(d,f,p):
 
 	#Rescale to 1024px
 	res = data2.get_xres()
-	#print(res)
+	print(res)
 	settings['/module/pixmap/zoom'] = 1024./res
 
 	if txt_si == 'm':
@@ -210,6 +211,13 @@ def proc_img(d,f,p):
 		fftre.fft_postprocess(True)
 		fftim.fft_postprocess(True)
 		fftre.hypot_of_fields(fftre, fftim)
+		
+		if crop_fft:
+			res_sc = int(res/4)
+			fftre.resize(res_sc,res_sc,res_sc*3,res_sc*3)
+			res2 = fftre.get_xres()
+			print(res2)
+			settings['/module/pixmap/zoom'] = 1024./res2
 		#modulus
 		'''
 		a = fftre.get_data()
@@ -247,6 +255,7 @@ def proc_img(d,f,p):
 		gwy.gwy_file_save(cc,d+'/processed_data/fft'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
 
+		settings['/module/pixmap/zoom'] = 1024./res
 		#'''
 		#psdf2d
 		gwy.gwy_app_data_browser_select_data_field(c, 0)

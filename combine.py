@@ -10,7 +10,7 @@ import os
 import cv2
 import numpy as np
 
-crop_fft = True
+crop_fft = False
 
 #Collect file and dirs lists
 def get_filelist(d):
@@ -88,8 +88,8 @@ def combine_lines(d,png_dir,lin_dir,f):
 		print("No combined line image was created for ",f)
 
 def combine_png(d,png_dir,fft_dir,crop_fft,f):
-	#try:
-	if 1:
+	try:
+	#if 1:
 		scale_factor = 4.
 
 		fft_im_path = d+'/processed_data/'+fft_dir+'/'+f[:-3]+'png'
@@ -97,19 +97,22 @@ def combine_png(d,png_dir,fft_dir,crop_fft,f):
 		fin_im_path = d+'/processed_data/'+'combined'+'/'+f[:-3]+'png'
 
 		fft = cv2.imread(fft_im_path)
-		if crop_fft:
-			dy = int(len(fft)/2)
-			dx = int(len(fft[0])/2)
-			fft = fft[dx-int(dx/2):dx+int(dx/2),dy-int(dy/2):dy+int(dy/2)] #TODO: check x&y directions 
-			scale_factor*=.5
+		
+		#if crop_fft:
+		#	dy = int(len(fft)/2)
+		#	dx = int(len(fft[0])/2)
+		#	fft = fft[dx-int(dx/2):dx+int(dx/2),dy-int(dy/2):dy+int(dy/2)] #TODO: check x&y directions 
+		#	scale_factor*=.5
+			
 		png = cv2.imread(png_im_path)
-		fft = cv2.resize(fft, None,fx=1/scale_factor, fy=1/scale_factor, interpolation = cv2.INTER_CUBIC)
+		fft = cv2.resize(fft, None,fx=1/scale_factor, fy=1/scale_factor, interpolation=cv2.INTER_CUBIC)
 		png[-len(fft):,-len(fft):]=fft #TODO add rectangulars support
 
 		cv2.imwrite(fin_im_path,png)
 		cv2.destroyAllWindows()
-	#except:
-	#	print("No combined image was created for ",f)
+	except Exception as e:
+ 		print("No combined image was created for ",f)
+ 		print(e)
 
 d='.' #Work in the current dir
 l,ld = get_filelist(d) #Collect lists of files and dirs there
