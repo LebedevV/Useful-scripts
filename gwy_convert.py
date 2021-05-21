@@ -99,7 +99,7 @@ def proc_img(d,f,p):
 	angle = 19
 	
 	invert = False
-	line_int = True
+	line_int = False
 
 	if rotate:
 		ext = data.new_alike()
@@ -377,7 +377,7 @@ if len(lf)>0:
 	print("Now processing: "+str(lf))
 	p = create_dirs(d,ld)
 	for f in lf:
-		#try:
-		proc_img(d,f,p)
-		#except:
-		#	print("Error with the image processing, file ",f)
+		try:
+			proc_img(d,f,p)
+		except:
+			print("Error with the image processing, file ",f)
