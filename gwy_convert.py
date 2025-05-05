@@ -1,9 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 __author__ = "Vasily A. Lebedev"
-__copyright__ = "Copyright 2019-2021, University of Limerick"
 __license__ = "GPL-v2"
-__email__ = "vasily.lebedev@ul.ie"
 __website__ = "https://github.com/LebedevV/Useful-scripts"
 
 '''
@@ -18,6 +16,8 @@ import os
 #For FFT angular integration
 import numpy as np
 #import matplotlib.pyplot as plt
+
+print 'Here we are'
 
 '''
 Pygwy have to be compiled and installed in advance
@@ -49,7 +49,7 @@ def get_filelist(d):
 
 #Create dirs for results
 def create_dirs(d,ld,overwrite=False):
-	l = ['png','fft','combined','fft_diff','line_int','combined/fft_i','combined/lin']
+	l = ['png','fft','combined','fft_diff','line_int','combined/fft_i','combined/lin','logphi']
 	p = ''
 #######To rewrite
 	try:
@@ -91,15 +91,27 @@ def proc_img(d,f,p):
 	#there is no obviuos ways to distinguish TEM and STEM images
 	data = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 
-
-	crop_fft = True 
-#	crop_fft = False 
-#	rotate = True
+	do_scalebar = True
+#	crop_fft = True 
+	crop_fft = False
+	if not 'STEM' in f:
+		rotate = True
+	else:
+		rotate = False
+		
+	rotate = True
+	angle = 88.15#88.20#88.18##93.86#90.60#95.63#-8.99#-103.44#-106.3#-107.61#-151.57#-81.71#-102.18#123.92
 	rotate = False
-	angle = 19
 	
 	invert = False
-	line_int = False
+	line_int = True
+	scale = False
+	#if f.startswith("250000X"):
+	#	scale = True
+	#	print("Rescale ",f)
+	scale_f = 1.0
+	
+	window = 'Hann' #'None'
 
 	if rotate:
 		ext = data.new_alike()
@@ -133,6 +145,7 @@ def proc_img(d,f,p):
 	settings['/module/pixmap/draw_maskkey'] = False
 
 	settings["/module/pixmap/inset_draw_label"] = True
+	#settings["/module/pixmap/inset_draw_label"] = False
 	settings["/module/pixmap/inset_draw_text_above"] = False
 	settings["/module/pixmap/draw_frame"] = False
 	settings["/module/pixmap/inset_draw_ticks"] = False
@@ -144,6 +157,21 @@ def proc_img(d,f,p):
 	settings["/module/pixmap/font_size"] = 40.
 	settings["/module/pixmap/outline_width"] = 0.
 	settings["/module/pixmap/line_width"] = 10.
+	settings['/app/gradients/default'] = "Gray"
+	settings['/app/gradients/editor/current'] = "Gray"
+	settings['/app/default-range-type'] = 2
+		
+	if do_scalebar:
+		settings["/module/pixmap/selection"] = "pointer"
+		settings["/module/pixmap/xytype"] = 2
+	else:
+		settings["/module/pixmap/selection"] = ""
+		settings["/module/pixmap/xytype"] = 0
+	
+	if window=='Hann':
+		settings["/module/psdf_logphi/window"] = 1
+	elif window=='None':
+		settings["/module/psdf_logphi/window"] = 0
 
 	# ... (*lots* of possible settings, see ~/.gwyddion/settings)
 
@@ -152,7 +180,18 @@ def proc_img(d,f,p):
 	print(res)
 	settings['/module/pixmap/zoom'] = 1024./res
 
-	if txt_si == 'm':
+	phys_size_x = data2.get_xreal()
+	phys_size_y = data2.get_yreal()
+	#print(phys_size)
+	if scale:
+		data2.set_xreal(phys_size_x*scale_f)
+		data2.set_yreal(phys_size_y*scale_f)
+
+	if txt_si == 'm' or txt_si == '':
+	
+		px_size = phys_size_x/res*10**9
+		print(1/px_size/2)
+		
 		print("Image")
 		#Saving the original image
 		#'''
@@ -171,14 +210,14 @@ def proc_img(d,f,p):
 		gwy.gwy_file_save(cc,d+'/processed_data/png'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 
 		if line_int:
-			data2 = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
+			#data2 = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD)
 			np_data = gwyutils.data_field_data_as_array(data2)
 			yoff = data2.get_yoffset()
 			#print(yoff,"y off")
 			data2_dy = data2.get_dy()
 			#print(psdf_dy,"y dy")
-			max_line_y = [max(i) for i in np_data.T]
-			avg_line_y = [sum(i)/len(i) for i in np_data.T]
+			max_line_y = [max(i) for i in np_data]
+			avg_line_y = [sum(i)/len(i) for i in np_data]
 			max_line_x = []
 			i = 0
 			while i<len(max_line_y):
@@ -203,11 +242,16 @@ def proc_img(d,f,p):
 		fftre = dd.new_alike()
 		fftim = dd.new_alike()
 		# see http://gwyddion.net/documentation/head/pygwy/gwy.DataField-class.html#fft2d
-		dd.fft2d(empty, fftre, fftim,
-			#gwy.WINDOWING_HANN,
-			gwy.WINDOWING_NONE,
-			gwy.TRANSFORM_DIRECTION_FORWARD,
-			gwy.INTERPOLATION_LINEAR, True, 1)
+		if window=='Hann':
+			dd.fft2d(empty, fftre, fftim,
+				gwy.WINDOWING_HANN,
+				gwy.TRANSFORM_DIRECTION_FORWARD,
+				gwy.INTERPOLATION_LINEAR, True, 1)
+		elif window=='None':
+			dd.fft2d(empty, fftre, fftim,
+				gwy.WINDOWING_NONE,
+				gwy.TRANSFORM_DIRECTION_FORWARD,
+				gwy.INTERPOLATION_LINEAR, True, 1)
 		fftre.fft_postprocess(True)
 		fftim.fft_postprocess(True)
 		fftre.hypot_of_fields(fftre, fftim)
@@ -218,15 +262,7 @@ def proc_img(d,f,p):
 			res2 = fftre.get_xres()
 			print(res2)
 			settings['/module/pixmap/zoom'] = 1024./res2
-		#modulus
-		'''
-		a = fftre.get_data()
-		visualize = fftre.new_alike()
-		visualize.set_data([numpy.sqrt(x) for x in a])
-		print max([numpy.sqrt(x) for x in a]),min([numpy.sqrt(x) for x in a])
-		#'''
-		#visualize.filter_gaussian(1)
-		#probably we need in some outliers filter here
+
 #		i = gwy.gwy_app_data_browser_add_data_field(visualize, cc, True)
 		i = gwy.gwy_app_data_browser_add_data_field(fftre, cc, True)
 		#key = gwy.gwy_name_from_key(gwy.gwy_app_get_data_title_key_for_id(i))
@@ -254,6 +290,19 @@ def proc_img(d,f,p):
 		cc['/'+str(i)+'/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
 		gwy.gwy_file_save(cc,d+'/processed_data/fft'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 		#'''
+		#modulus
+		#'''
+		fftre.area_fill(res/2-100, res/2-100, 200, 200, 1.0)
+		a = fftre.get_data()
+		#visualize = fftre.new_alike()
+		#visualize.set_data([numpy.sqrt(x) for x in a])
+		fft_scale_f = max([np.sqrt(x) for x in a]) 
+		#print max([np.sqrt(x) for x in a]),min([np.sqrt(x) for x in a])
+		#'''
+		#visualize.filter_gaussian(1)
+		#probably we need in some outliers filter here
+
+
 
 		settings['/module/pixmap/zoom'] = 1024./res
 		#'''
@@ -273,7 +322,7 @@ def proc_img(d,f,p):
 		gwy.gwy_app_data_browser_select_data_field(cc, i_psdf[0])
 		cc['/2/base/palette'] = 'DFit'#'Blue-Violet'
 		cc['/2/base/range-type'] = int(gwy.LAYER_BASIC_RANGE_AUTO)
-		#gwy.gwy_file_save(cc,d+'/processed_data/logphi'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
+		gwy.gwy_file_save(cc,d+'/processed_data/logphi'+p+'/'+f[:-3]+'png',gwy.RUN_NONINTERACTIVE)
 
 
 		#Look for a max value for each R
@@ -285,8 +334,8 @@ def proc_img(d,f,p):
 		#print(yoff,"y off")
 		psdf_dy = psdf.get_dy()
 		#print(psdf_dy,"y dy")
-		max_fft_y = [max(i) for i in np_psdf.T]
-		avg_fft_y = [sum(i)/len(i) for i in np_psdf.T]
+		max_fft_y = [max(i)*fft_scale_f for i in np_psdf]#.T
+		avg_fft_y = [sum(i)/len(i)*fft_scale_f for i in np_psdf]
 		i = 0
 		max_fft_x = []
 		while i<len(max_fft_y):
@@ -370,7 +419,7 @@ def proc_img(d,f,p):
 
 d='.' #Work in the current dir
 l,ld = get_filelist(d) #Collect lists of files and dirs there
-lf = filter_ending(l,['dm3','dm4','gwy']) #Select files of specified type
+lf = filter_ending(l,['dm3','dm4','gwy','ser']) #Select files of specified type
 
 #Processing
 if len(lf)>0:
@@ -378,6 +427,7 @@ if len(lf)>0:
 	p = create_dirs(d,ld)
 	for f in lf:
 		try:
+			#if 1:
 			proc_img(d,f,p)
 		except:
 			print("Error with the image processing, file ",f)
